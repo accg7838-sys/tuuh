@@ -1,0 +1,20 @@
+import {readFile,stat} from 'node:fs/promises';
+import {fileURLToPath} from 'node:url';
+import vm from 'node:vm';
+const root=fileURLToPath(new URL('../dist/',import.meta.url));
+const read=f=>readFile(root+f,'utf8');
+const context={window:{}};
+vm.runInNewContext(await read('data.js'),context);
+new vm.Script(await read('app.js'));
+const speakers=context.window.SPEAKERS;
+if(speakers.length!==9||speakers.reduce((n,s)=>n+s.minutes,0)!==40)throw Error('9 speakers / 40 minutes required');
+const scenes=speakers.flatMap(s=>s.scenes);
+if(scenes.length!==36||speakers.some(s=>s.scenes.length<3))throw Error('36 narrated scenes required');
+if(scenes.some(s=>!s.talk||s.talk.length<60||!s.motion))throw Error('Missing narration or motion');
+const notes=JSON.parse(await read('notes.json'));
+if(notes.length!==9||notes.some((s,i)=>!s.startsWith((i+1)+'. ')||s.length<500))throw Error('Incomplete notes');
+const manifest=JSON.parse(await read('assets-manifest.json'));
+for(const m of manifest){if(!m.source||!m.license||!m.author||!m.date||!m.use)throw Error('Incomplete credit '+m.id);if((await stat(root+m.file)).size<1000)throw Error('Empty image '+m.file)}
+for(const s of speakers)for(const scene of s.scenes)if(scene.image&&!manifest.some(m=>m.id===scene.image))throw Error('Missing asset '+scene.image);
+for(const f of ['assets/serif.ttf','assets/sans.ttf','assets/FONT-LICENSE.txt','index.html','style.css'])if(!(await stat(root+f)).size)throw Error('Missing file '+f);
+console.log('PASS: 9 speakers, 40 minutes, 36 narrated scenes, 9 complete scripts, 10 credited local images, fonts, JS syntax. Production dist ready.');

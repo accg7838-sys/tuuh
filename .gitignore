@@ -1,0 +1,6 @@
+.DS_Store
+node_modules/
+*.log
+bogd-museum.zip
+bogd-museum/scripts/image-search.json
+bogd-museum/scripts/download.sh
